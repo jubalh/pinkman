@@ -2,6 +2,14 @@ package main
 
 import "fmt"
 
+const description = "the totally kafkaesque chess game"
+
+func printWelcome() {
+	fmt.Println("*** pinkman ***")
+	fmt.Println(description)
+	fmt.Println()
+}
+
 func drawColumnsIndex() {
 	fmt.Print("  ")
 	for i := 'A'; i <= 'H'; i++ {

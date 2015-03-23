@@ -12,15 +12,20 @@ import (
 )
 
 var b *pgn.Board
-var stockfishPath = "/home/sb/stockfish-6-linux/stockfish-6-linux/Linux/stockfish_6_x64"
+var uciPath = "/home/sb/stockfish-6-linux/stockfish-6-linux/Linux/stockfish_6_x64"
 
-func run(*cli.Context) {
+func run(cli *cli.Context) {
 	var errmsg string
 	var infomsg string
 	var prompt string
 
 	running := false
-	engine, err := uci.NewEngine(stockfishPath)
+
+	if cli.IsSet("path") {
+		uciPath = cli.GlobalString("path")
+	}
+
+	engine, err := uci.NewEngine(uciPath)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -32,9 +37,7 @@ func run(*cli.Context) {
 		MultiPV: 4,
 	})
 
-	fmt.Println("*** pinkman ***")
-	fmt.Println("the totally kafkaesque chess game")
-	fmt.Println()
+	printWelcome()
 
 	b = pgn.NewBoard()
 	activePlayer := "white"
@@ -114,7 +117,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Name = "pinkman"
-	app.Usage = "the totally kafkaesque chess game"
+	app.Usage = description
 	app.Author = "Michael Vetter"
 	app.Version = "0.0.1"
 	app.Email = "g.bluehut@gmail.com"
