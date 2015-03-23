@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/bobappleyard/readline"
+	"github.com/codegangsta/cli"
 	"github.com/wfreeman/pgn"
 	"github.com/wfreeman/uci"
 )
@@ -12,7 +14,7 @@ import (
 var b *pgn.Board
 var stockfishPath = "/home/sb/stockfish-6-linux/stockfish-6-linux/Linux/stockfish_6_x64"
 
-func main() {
+func run(*cli.Context) {
 	var errmsg string
 	var infomsg string
 	var prompt string
@@ -104,4 +106,30 @@ func main() {
 		}
 		readline.AddHistory(inputline)
 	}
+}
+
+func cmdShow(*cli.Context) {
+}
+func main() {
+	app := cli.NewApp()
+
+	app.Name = "pinkman"
+	app.Usage = "the totally kafkaesque chess game"
+	app.Author = "Michael Vetter"
+	app.Version = "0.0.1"
+	app.Email = "g.bluehut@gmail.com"
+
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  "no-engine",
+			Usage: "don't play against an engine. Can be used in case two people want to play on the same computer"},
+		cli.StringFlag{
+			Name:  "path",
+			Usage: "set path to UCI engine",
+		},
+	}
+
+	app.Action = run
+
+	app.Run(os.Args)
 }
