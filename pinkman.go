@@ -72,6 +72,7 @@ func run(cli *cli.Context) {
 			infomsg = "Game stopped"
 			running = false
 		case "exit":
+			engine.Close()
 			return
 		case "showfen":
 			fmt.Println("FEN: ", b.String())
