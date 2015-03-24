@@ -12,7 +12,6 @@ import (
 )
 
 var b *pgn.Board
-var uciPath = "/home/sb/stockfish-6-linux/stockfish-6-linux/Linux/stockfish_6_x64"
 
 func run(cli *cli.Context) {
 	var errmsg string
@@ -21,12 +20,11 @@ func run(cli *cli.Context) {
 
 	running := false
 
-	if cli.IsSet("path") {
-		uciPath = cli.GlobalString("path")
-	}
+	uciPath := cli.GlobalString("path")
 
 	engine, err := uci.NewEngine(uciPath)
 	if err != nil {
+		fmt.Println("Error: Could not start UCI engine from:", uciPath)
 		fmt.Println(err)
 		return
 	}
@@ -129,7 +127,8 @@ func main() {
 			Usage: "don't play against an engine. Can be used in case two people want to play on the same computer"},
 		cli.StringFlag{
 			Name:  "path",
-			Usage: "set path to UCI engine",
+			Value: "./stockfish",
+			Usage: "set path to UCI engine. Standard is a executable named 'stockfish' in the same directory as the pinkman binary",
 		},
 	}
 
