@@ -78,7 +78,14 @@ func run(cli *cli.Context) {
 			fmt.Println("FEN: ", b.String())
 		default:
 			if running {
-				if activePlayer == "black" {
+				if len(inputline) >= 4 {
+					err = b.MakeCoordMove(inputline)
+					if err != nil && err != pgn.ErrUnknownMove {
+						errmsg = err.Error()
+						break
+					}
+				}
+				if !cli.GlobalIsSet("no-engine") {
 					engine.SetFEN(b.String())
 					resultOps := uci.HighestDepthOnly
 					results, err := engine.GoDepth(10, resultOps)
@@ -89,13 +96,6 @@ func run(cli *cli.Context) {
 					fmt.Println("Best move:", results.BestMove)
 					err = b.MakeCoordMove(results.BestMove)
 					break
-				}
-				if len(inputline) >= 4 {
-					err = b.MakeCoordMove(inputline)
-					if err != nil && err != pgn.ErrUnknownMove {
-						errmsg = err.Error()
-						break
-					}
 				}
 			}
 		}
