@@ -7,26 +7,45 @@ import (
 
 	"github.com/bobappleyard/readline"
 	"github.com/codegangsta/cli"
-	"github.com/wfreeman/pgn"
-	"github.com/wfreeman/uci"
+	"github.com/freeeve/pgn"
+	"github.com/jubalh/uci"
 )
 
-var b *pgn.Board
+type Game struct {
+	against_ai    bool
+	engine_path   string
+	engine        *uci.Engine
+	active_player string
+	active        bool
+	ai_color      string
+}
 
-func run(cli *cli.Context) {
-	var errmsg string
-	var infomsg string
-	var prompt string
+var board *pgn.Board
+var game Game
 
-	running := false
+func next_player() {
+	if game.active_player == "white" {
+		game.active_player = "black"
+	} else {
+		game.active_player = "white"
+	}
+}
 
-	uciPath := cli.GlobalString("path")
+func parse_options(cli *cli.Context) {
+	game.against_ai = !cli.GlobalIsSet("no-ai")
+	game.engine_path = cli.GlobalString("path")
 
-	engine, err := uci.NewEngine(uciPath)
+	if cli.GlobalIsSet("ai-white") {
+		game.ai_color = "white"
+	} else {
+		game.ai_color = "black"
+	}
+}
+
+func launch_engine(cli *cli.Context) error {
+	engine, err := uci.NewEngine(game.engine_path)
 	if err != nil {
-		fmt.Println("Error: Could not start UCI engine from:", uciPath)
-		fmt.Println(err)
-		return
+		return err
 	}
 	engine.SetOptions(uci.Options{
 		Hash:    128,
@@ -34,84 +53,146 @@ func run(cli *cli.Context) {
 		OwnBook: true,
 		MultiPV: 4,
 	})
+	game.engine = engine
+	return nil
+}
 
-	printWelcome()
+func get_readline_prompt(infomsg, errmsg string) (string, error) {
+	var prompt string
 
-	b = pgn.NewBoard()
-	activePlayer := "white"
+	if infomsg != "" {
+		prompt += infomsg
+	}
+	if errmsg != "" {
+		prompt += " \u25AB "
+		prompt += errmsg
+	}
+	if game.active {
+		prompt += " \u25AB " + game.active_player
+	}
+	prompt += "# "
 
-	for {
-		if infomsg != "" {
-			prompt += infomsg
-		}
-		if errmsg != "" {
-			prompt += " \u25AB "
-			prompt += errmsg
-		}
-		if running {
-			prompt += " \u25AB " + activePlayer
-		}
-		prompt += "# "
+	return readline.String(prompt)
+}
 
-		inputline, err := readline.String(prompt)
-		prompt = ""
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			fmt.Println("error: ", err)
-			break
-		}
-		switch inputline {
-		case "start":
-			infomsg = "Game started"
-			running = true
-		case "stop":
-			infomsg = "Game stopped"
-			running = false
-		case "exit":
-			engine.Close()
-			return
-		case "showfen":
-			fmt.Println("FEN: ", b.String())
-		default:
-			if running {
-				if len(inputline) >= 4 {
-					err = b.MakeCoordMove(inputline)
-					if err != nil && err != pgn.ErrUnknownMove {
-						errmsg = err.Error()
-						break
-					}
-				}
-				if !cli.GlobalIsSet("no-engine") {
-					engine.SetFEN(b.String())
-					resultOps := uci.HighestDepthOnly
-					results, err := engine.GoDepth(10, resultOps)
-					if err != nil {
-						fmt.Println(err)
-						return
-					}
-					fmt.Println("Best move:", results.BestMove)
-					err = b.MakeCoordMove(results.BestMove)
-					break
-				}
-			}
-		}
-		fen := pgn.FENFromBoard(b)
-		if fen.ToMove == pgn.White {
-			activePlayer = "white"
-		} else {
-			activePlayer = "black"
-		}
-		if running {
-			drawBoard(fen.FOR)
-		}
-		readline.AddHistory(inputline)
+func draw_board() {
+	fen := pgn.FENFromBoard(board)
+	drawBoard(fen.FOR)
+}
+
+func get_engine_move() string {
+	game.engine.SetFEN(board.String())
+
+	resultOps := uci.HighestDepthOnly
+	results, err := game.engine.GoDepth(10, resultOps)
+	if err != nil {
+		fmt.Println("do something")
+		fmt.Println(err)
+	}
+	return results.BestMove
+}
+
+func terminate(err error) {
+	if err != nil {
+		fmt.Println("erro: ", err)
+		os.Exit(1)
 	}
 }
 
-func cmdShow(*cli.Context) {
+func make_turn(inputline string) string {
+	// if AI move
+	if game.active_player == game.ai_color {
+		move := get_engine_move()
+		board.MakeCoordMove(move)
+		next_player()
+	} else {
+		game.engine.SetFEN(board.String())
+
+		legal, err := game.engine.IsLegalMove(inputline)
+		terminate(err)
+		if legal {
+			err = board.MakeCoordMove(inputline)
+			if err != nil && err != pgn.ErrUnknownMove {
+				return "Illegal Move"
+			}
+			next_player()
+		} else {
+			return "Illegal Move"
+		}
+	}
+	return ""
 }
+
+func run(cli *cli.Context) {
+	var errmsg string
+	var infomsg string
+
+	game.active = false
+	parse_options(cli)
+
+	err := launch_engine(cli)
+	if err != nil {
+		fmt.Println("Error: Could not start UCI engine from:", game.engine_path)
+		return
+	}
+
+	printWelcome()
+
+	board = pgn.NewBoard()
+
+	for {
+		inputline, err := get_readline_prompt(infomsg, errmsg)
+		if err == io.EOF {
+			return
+		}
+		terminate(err)
+		errmsg = ""
+
+		switch inputline {
+		// commands
+		case "start":
+			infomsg = "Game started"
+			game.active = true
+			game.active_player = "white"
+			draw_board()
+			break
+		case "stop":
+			infomsg = "Game stopped"
+			game.active = false
+			break
+		case "exit":
+			if game.engine != nil {
+				game.engine.Close()
+			}
+			return
+		case "showfen":
+			fmt.Println("FEN: ", board.String())
+			break
+		// moves
+		default:
+			if game.active {
+				if game.ai_color == "white" && game.active_player == game.ai_color {
+					make_turn("")
+				}
+				if len(inputline) >= 4 {
+					errmsg = make_turn(inputline)
+					if game.against_ai && len(errmsg) < 1 {
+						make_turn("")
+					}
+				}
+
+				fmt.Println(board.String())
+			}
+
+			if game.active {
+				draw_board()
+			}
+
+			readline.AddHistory(inputline)
+		}
+	}
+}
+
 func main() {
 	app := cli.NewApp()
 
@@ -123,8 +204,11 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
-			Name:  "no-engine",
-			Usage: "don't play against an engine. Can be used in case two people want to play on the same computer"},
+			Name:  "no-ai",
+			Usage: "don't play against the engine. Can be used in case two people want to play on the same computer"},
+		cli.BoolFlag{
+			Name:  "ai-white",
+			Usage: "let AI play white"},
 		cli.StringFlag{
 			Name:  "path",
 			Value: "./stockfish",
