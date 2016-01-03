@@ -85,16 +85,13 @@ func get_engine_move() string {
 
 	resultOps := uci.HighestDepthOnly
 	results, err := game.engine.GoDepth(10, resultOps)
-	if err != nil {
-		fmt.Println("do something")
-		fmt.Println(err)
-	}
+	fatal_terminate(err)
 	return results.BestMove
 }
 
-func terminate(err error) {
+func fatal_terminate(err error) {
 	if err != nil {
-		fmt.Println("erro: ", err)
+		fmt.Println("error: ", err)
 		os.Exit(1)
 	}
 }
@@ -109,15 +106,15 @@ func make_turn(inputline string) string {
 		game.engine.SetFEN(board.String())
 
 		legal, err := game.engine.IsLegalMove(inputline)
-		terminate(err)
+		fatal_terminate(err)
 		if legal {
 			err = board.MakeCoordMove(inputline)
 			if err != nil && err != pgn.ErrUnknownMove {
-				return "Illegal Move"
+				return "Illegal move"
 			}
 			next_player()
 		} else {
-			return "Illegal Move"
+			return "Illegal move"
 		}
 	}
 	return ""
@@ -132,7 +129,7 @@ func run(cli *cli.Context) {
 
 	err := launch_engine(cli)
 	if err != nil {
-		fmt.Println("Error: Could not start UCI engine from:", game.engine_path)
+		fmt.Println("Error: Could not start UCI engine from: ", game.engine_path)
 		return
 	}
 
@@ -143,7 +140,7 @@ func run(cli *cli.Context) {
 		if err == io.EOF {
 			return
 		}
-		terminate(err)
+		fatal_terminate(err)
 		errmsg = ""
 
 		switch inputline {
