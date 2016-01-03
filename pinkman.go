@@ -199,8 +199,8 @@ func main() {
 	app.Name = "pinkman"
 	app.Usage = description
 	app.Author = "Michael Vetter"
-	app.Version = "0.0.1"
-	app.Email = "g.bluehut@gmail.com"
+	app.Version = "0.1"
+	app.Email = "jubalh@openmailbox.org"
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
