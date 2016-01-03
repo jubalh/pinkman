@@ -138,8 +138,6 @@ func run(cli *cli.Context) {
 
 	printWelcome()
 
-	board = pgn.NewBoard()
-
 	for {
 		inputline, err := get_readline_prompt(infomsg, errmsg)
 		if err == io.EOF {
@@ -151,6 +149,7 @@ func run(cli *cli.Context) {
 		switch inputline {
 		// commands
 		case "start":
+			board = pgn.NewBoard()
 			infomsg = "Game started"
 			game.active = true
 			game.active_player = "white"
@@ -180,8 +179,6 @@ func run(cli *cli.Context) {
 						make_turn("")
 					}
 				}
-
-				fmt.Println(board.String())
 			}
 
 			if game.active {
