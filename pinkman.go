@@ -1,3 +1,4 @@
+// Pinkman is a command line chess interface to UCI chess engines
 package main
 
 import (
