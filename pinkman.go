@@ -146,6 +146,9 @@ func run(cli *cli.Context) {
 
 		switch inputline {
 		// commands
+		case "help":
+			printInGameHelp()
+			break
 		case "start":
 			board = pgn.NewBoard()
 			infomsg = "Game started"

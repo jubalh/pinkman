@@ -1,3 +1,4 @@
+// Ui functions for pinkman
 package main
 
 import "fmt"
@@ -7,6 +8,22 @@ const description = "the totally kafkaesque chess game"
 func printWelcome() {
 	fmt.Println("*** pinkman ***")
 	fmt.Println(description)
+	fmt.Println()
+}
+
+func printInGameHelp() {
+	fmt.Println("=======")
+	fmt.Println("pinkman")
+	fmt.Println("=======")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("start - start game")
+	fmt.Println("stop - end game")
+	fmt.Println("exit - exit pinkman")
+	fmt.Println("showfen - show FEN")
+	fmt.Println()
+	fmt.Println("Move a piece using this notation: a2a4")
+	fmt.Println("=======")
 	fmt.Println()
 }
 
