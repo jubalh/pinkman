@@ -5,6 +5,9 @@ pinkman is a command line based chess interface to UCI compatible chess engines,
 
 # Installation
 
+For 64 bit Linux you can find the pinkman and stockfish binaries zipped into `pinkman-linux-64.tar.gz` in [releases](https://github.com/jubalh/pinkman/releases).
+If you want to compile them yourself or use another operating system you need to:
+
 ```
 go get github.com/jubalh/pinkman
 ```
