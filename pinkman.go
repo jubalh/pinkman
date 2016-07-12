@@ -218,7 +218,7 @@ func main() {
 			Usage: "let AI play white"},
 		cli.StringFlag{
 			Name:  "path",
-			Value: "./stockfish",
+			Value: "/usr/bin/stockfish",
 			Usage: "set path to UCI engine. Standard is a executable named 'stockfish' in the same directory as the pinkman binary",
 		},
 	}
