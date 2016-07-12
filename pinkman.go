@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/bobappleyard/readline"
-	"github.com/codegangsta/cli"
 	"github.com/freeeve/pgn"
 	"github.com/jubalh/uci"
+	"gopkg.in/urfave/cli.v1"
 )
 
 type Game struct {
@@ -32,11 +32,11 @@ func next_player() {
 	}
 }
 
-func parse_options(cli *cli.Context) {
-	game.against_ai = !cli.GlobalIsSet("no-ai")
-	game.engine_path = cli.GlobalString("path")
+func parse_options(ctx *cli.Context) {
+	game.against_ai = !ctx.GlobalIsSet("no-ai")
+	game.engine_path = ctx.GlobalString("path")
 
-	if cli.GlobalIsSet("ai-white") {
+	if ctx.GlobalIsSet("ai-white") {
 		game.ai_color = "white"
 	} else {
 		game.ai_color = "black"
@@ -81,57 +81,57 @@ func draw_board() {
 	drawBoard(fen.FOR)
 }
 
-func get_engine_move() string {
+func get_engine_move() (string, error) {
 	game.engine.SetFEN(board.String())
 
 	resultOps := uci.HighestDepthOnly
 	results, err := game.engine.GoDepth(10, resultOps)
-	fatal_terminate(err)
-	return results.BestMove
-}
-
-func fatal_terminate(err error) {
 	if err != nil {
-		fmt.Println("error: ", err)
-		os.Exit(1)
+		return "", err
 	}
+
+	return results.BestMove, nil
 }
 
-func make_turn(inputline string) string {
+func make_turn(inputline string) (string, error) {
 	// if AI move
 	if game.active_player == game.ai_color {
-		move := get_engine_move()
+		move, err := get_engine_move()
+		if err != nil {
+			return "", err
+		}
 		board.MakeCoordMove(move)
 		next_player()
 	} else {
 		game.engine.SetFEN(board.String())
 
 		legal, err := game.engine.IsLegalMove(inputline)
-		fatal_terminate(err)
+		if err != nil {
+			return "", err
+		}
 		if legal {
 			err = board.MakeCoordMove(inputline)
 			if err != nil && err != pgn.ErrUnknownMove {
-				return "Illegal move"
+				return "Illegal move", nil
 			}
 			next_player()
 		} else {
-			return "Illegal move"
+			return "Illegal move", nil
 		}
 	}
-	return ""
+	return "", nil
 }
 
-func run(cli *cli.Context) {
+func run(ctx *cli.Context) error {
 	var errmsg string
 	var infomsg string
 
 	game.active = false
-	parse_options(cli)
+	parse_options(ctx)
 
-	err := launch_engine(cli)
+	err := launch_engine(ctx)
 	if err != nil {
-		fmt.Println("Error: Could not start UCI engine from: ", game.engine_path)
-		return
+		return cli.NewExitError("Error: Could not start UCI engine from: "+game.engine_path, 1)
 	}
 
 	printWelcome()
@@ -139,9 +139,8 @@ func run(cli *cli.Context) {
 	for {
 		inputline, err := get_readline_prompt(infomsg, errmsg)
 		if err == io.EOF {
-			return
+			return cli.NewExitError("Error: "+err.Error(), 1)
 		}
-		fatal_terminate(err)
 		errmsg = ""
 
 		switch inputline {
@@ -164,7 +163,7 @@ func run(cli *cli.Context) {
 			if game.engine != nil {
 				game.engine.Close()
 			}
-			return
+			return nil
 		case "showfen":
 			fmt.Println("FEN: ", board.String())
 			break
@@ -172,12 +171,21 @@ func run(cli *cli.Context) {
 		default:
 			if game.active {
 				if game.ai_color == "white" && game.active_player == game.ai_color {
-					make_turn("")
+					_, err := make_turn("")
+					if err != nil {
+						return cli.NewExitError("Error: "+err.Error(), 1)
+					}
 				}
 				if len(inputline) >= 4 {
-					errmsg = make_turn(inputline)
+					errmsg, err = make_turn(inputline)
+					if err != nil {
+						return cli.NewExitError("Error: "+err.Error(), 1)
+					}
 					if game.against_ai && len(errmsg) < 1 {
-						make_turn("")
+						_, err := make_turn("")
+						if err != nil {
+							return cli.NewExitError("Error: "+err.Error(), 1)
+						}
 					}
 				}
 			}
@@ -189,6 +197,7 @@ func run(cli *cli.Context) {
 			readline.AddHistory(inputline)
 		}
 	}
+	return nil
 }
 
 func main() {
@@ -216,5 +225,8 @@ func main() {
 
 	app.Action = run
 
-	app.Run(os.Args)
+	err := app.Run(os.Args)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 }
